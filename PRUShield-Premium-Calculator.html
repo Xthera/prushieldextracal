@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PRUShield Premium Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: form column on the left, sticky premium summary on the right; stacks to one column on phones */
+:root {
+  --bg: #f5f6f4;
+  --surface: #ffffff;
+  --fg: #1b2420;
+  --muted: #5f6b66;
+  --line: #dde2de;
+  --accent: #0f6b5a;
+  --accent-soft: #e3f1ed;
+  --warn: #9a5b00;
+  --warn-soft: #fff3df;
+  --medisave: #2f5fa8;
+  --cash: #b0532b;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121715; --surface: #1a211e; --fg: #e6ece9; --muted: #9aa8a2; --line: #2c3632;
+    --accent: #4fc0a6; --accent-soft: #183a32; --warn: #f0b35a; --warn-soft: #3a2c14;
+    --medisave: #7ea6e8; --cash: #e9926a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121715; --surface: #1a211e; --fg: #e6ece9; --muted: #9aa8a2; --line: #2c3632;
+  --accent: #4fc0a6; --accent-soft: #183a32; --warn: #f0b35a; --warn-soft: #3a2c14;
+  --medisave: #7ea6e8; --cash: #e9926a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; }
+header { display: grid; gap: 4px; margin-bottom: 24px; }
+h1 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 65ch; }
+.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; font-weight: 600; color: var(--accent); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 24px; align-items: start; }
+@media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+form { display: grid; gap: 18px; }
+.field { display: grid; gap: 6px; }
+label, .label { font-weight: 600; font-size: .9rem; }
+.hint { font-size: .8rem; color: var(--muted); }
+select {
+  width: 100%; font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; appearance: auto;
+}
+select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+.toggle { display: flex; gap: 10px; align-items: center; font-size: .9rem; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+.notes { display: grid; gap: 8px; }
+.note { font-size: .82rem; padding: 8px 10px; border-radius: 6px; background: var(--warn-soft); color: var(--warn); }
+.note.info { background: var(--accent-soft); color: var(--accent); }
+
+.summary { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: grid; gap: 16px; }
+.total { display: grid; gap: 2px; }
+.total .amt { font-family: var(--font-num); font-size: 2.1rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.total .per { color: var(--muted); font-size: .85rem; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { padding: 8px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 10px; }
+tr.sum td { font-weight: 700; border-bottom: none; }
+.sm { display: block; font-size: .76rem; color: var(--muted); font-weight: 400; }
+.split { display: grid; gap: 8px; }
+.bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.bar span { display: block; height: 100%; }
+.bar .ms { background: var(--medisave); }
+.bar .ca { background: var(--cash); }
+.legend { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: .85rem; }
+.legend b { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.badge { display: inline-block; font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); margin-left: 6px; vertical-align: 1px; }
+footer { margin-top: 28px; font-size: .78rem; color: var(--muted); max-width: 75ch; display: grid; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Premium table effective 1 May 2026 · incl. 9% GST</span>
+    <h1>PRUShield Premium Calculator</h1>
+    <p class="sub">Choose the residency status, age next birthday, base plan and rider to see the yearly premium and how much can be paid from MediSave.</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <form id="calc" onsubmit="return false">
+        <div class="field">
+          <label for="pass">Residency / pass holder</label>
+          <select id="pass">
+            <option value="sc">Singapore Citizen</option>
+            <option value="pr">Singapore Permanent Resident</option>
+            <option value="t1">Foreigner – eligible valid pass holder (Type 1)</option>
+            <option value="t2">Foreigner – dependant of a Singapore Citizen / PR (Type 2)</option>
+          </select>
+          <span class="hint" id="passHint"></span>
+        </div>
+
+        <div class="field">
+          <label for="age">Age next birthday</label>
+          <select id="age"></select>
+          <span class="hint">Age next birthday = current age + 1.</span>
+        </div>
+
+        <div class="field">
+          <label for="plan">Base plan</label>
+          <select id="plan"></select>
+        </div>
+
+        <div class="field">
+          <label for="rider">Rider</label>
+          <select id="rider"></select>
+        </div>
+
+        <div class="toggle" id="rewardWrap">
+          <input type="checkbox" id="reward" checked>
+          <label for="reward" id="rewardLabel">Apply PRUWell Reward on rider</label>
+        </div>
+
+        <div class="notes" id="notes"></div>
+      </form>
+    </div>
+
+    <aside class="panel summary" aria-live="polite">
+      <div class="total">
+        <span class="label">Total annual premium</span>
+        <span class="amt" id="total">S$0.00</span>
+        <span class="per" id="monthly"></span>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Component</th><th class="n">S$ / year</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="split">
+        <span class="label">How it is paid</span>
+        <div class="bar"><span class="ms" id="barMs"></span><span class="ca" id="barCa"></span></div>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--medisave)"></span>MediSave <b id="msAmt"></b></span>
+          <span><span class="dot" style="background:var(--cash)"></span>Cash <b id="caAmt"></b></span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>Unofficial calculator built from the PRUShield premium table for new applications with cover start date, and renewals with renewal date, from 1 May 2026. Premiums are for standard lives (no pre-existing conditions). MediShield Life premiums shown are before any government subsidies, rebates or additional premiums.</p>
+    <p>Rider availability by base plan follows the rider names (PRUExtra Premier / Preferred riders with PRUShield Premier; PRUExtra Plus riders with PRUShield Plus). Confirm with the official illustration before advising a client.</p>
+  </footer>
+</div>
+
+<script>
+// ---------- data helpers: arrays indexed by age next birthday 1..101 (101 = above 100) ----------
+function R(ranges){ const a=[]; ranges.forEach(([lo,hi,v])=>{ for(let i=lo;i<=hi;i++) a[i]=v; }); return a; }
+function L(list){ const a=[]; list.forEach((v,i)=>a[i+1]=v); if(a.length<=101) a[101]=a[100]; return a; }
+
+const MSL = R([[1,20,200],[21,30,295],[31,40,503],[41,50,637],[51,60,903],[61,65,1131],[66,70,1326],[71,73,1643],[74,75,1816],[76,78,2027],[79,80,2187],[81,83,2303],[84,85,2616],[86,90,2785],[91,101,2826]]);
+const AWL = R([[1,40,300],[41,70,600],[71,101,900]]);
+
+const PLANS = {
+  premier: { name:"PRUShield Premier", pass:["sc","pr","t1","t2"], aip: L([300,300,300,300,300,297,293,288,284,272,272,272,279,279,279,279,279,279,300,300,300,300,300,300,300,307,307,307,307,307,432,465,483,483,483,492,500,504,509,516,903,938,948,960,977,982,988,997,1007,1030,1507,1601,1694,1780,1869,1966,2064,2138,2188,2258,2739,2801,2881,2946,2994,3856,4146,4283,4393,4493,5146,5399,5518,5742,6299,6512,6938,7249,7501,8021,8437,8956,9580,9958,10314,10574,10929,11284,11642,11846,12009,12109,12209,12830,12903,12993,13075,13075,13075,13075]) },
+  plus: { name:"PRUShield Plus", pass:["sc","pr","t1","t2"], aip: R([[1,20,85],[21,30,77],[31,35,113],[36,40,152],[41,45,208],[46,50,251],[51,53,319],[54,60,357],[61,63,484],[64,65,600],[66,68,972],[69,70,1075],[71,73,1533],[74,74,1776],[75,75,1949],[76,76,2342],[77,78,2734],[79,80,2772],[81,83,3063],[84,85,3554],[86,90,3812],[91,93,3920],[94,95,4272],[96,98,4443],[99,101,4826]]) },
+  standard: { name:"PRUShield Standard Plan", pass:["sc","pr","t1","t2"], aip: R([[1,20,41.77],[21,30,48.90],[31,40,64.18],[41,50,110.02],[51,55,143.64],[56,60,182.35],[61,65,254.67],[66,70,403.40],[71,73,621.40],[74,75,759.94],[76,78,959.61],[79,80,1032.95],[81,83,1178.63],[84,85,1225.49],[86,88,1442.47],[89,90,1620.74],[91,93,1778.64],[94,95,1979.32],[96,98,2191.21],[99,101,2416.34]]) },
+  a: { name:"PRUShield A", renewal:true, pass:["sc","pr"], aip: R([[1,30,68.25],[31,40,92.70],[41,50,171.14],[51,55,254.67],[56,60,268.93],[61,65,480.82],[66,70,806.80],[71,73,1304.94],[74,75,1532.11],[76,78,2256.40],[79,80,2168.79],[81,83,1915.14],[84,85,2216.67],[86,90,2407.17],[91,93,4091.07],[94,95,4374.26],[96,98,4407.88],[99,101,4759.33]]) },
+  b: { name:"PRUShield B", renewal:true, pass:["sc","pr"], aip: R([[1,30,39.73],[31,40,52.97],[41,50,78.44],[51,55,81.50],[56,60,91.68],[61,65,179.29],[66,70,354.50],[71,73,645.85],[74,75,749.76],[76,78,1156.21],[79,80,1084.91],[81,83,828.20],[84,85,862.83],[86,90,941.27],[91,93,1986.45],[94,95,2164.72],[96,98,2186.11],[99,101,2406.15]]) }
+};
+
+const ALL = ["sc","pr","t1","t2"];
+const RIDERS = {
+  premierCare: { name:"PRUExtra Premier Care", base:"premier", pass:ALL, reward:0.2, prem: L([756,754,749,737,724,701,678,655,631,607,577,579,581,583,585,587,591,597,604,611,618,625,633,641,649,657,665,673,681,690,709,727,746,757,770,783,801,821,843,864,963,1040,1115,1191,1226,1247,1268,1291,1315,1342,1468,1570,1671,1773,1943,2114,2232,2356,2472,2670,2940,3184,3416,3576,3790,4050,4300,4550,4770,4990,5190,5524,5744,6025,6275,6507,6709,6910,7110,7298,7486,7674,7786,7898,8018,8222,8422,8622,8767,8908,8963,9013,9061,9159,9255,9321,9387,9456,9554,9652,9652]) },
+  preferredCare: { name:"PRUExtra Preferred Care", base:"premier", pass:ALL, prem: L([332,330,329,325,318,308,298,287,276,265,260,261,262,263,264,265,266,267,268,269,273,278,282,284,286,288,290,293,296,299,304,309,316,324,332,341,350,360,375,394,430,469,515,541,553,565,577,588,600,612,658,707,746,786,828,897,979,1032,1098,1184,1279,1373,1470,1566,1646,1745,1850,1969,2085,2200,2305,2410,2518,2641,2752,2866,2978,3088,3198,3302,3407,3510,3600,3690,3780,3870,3965,4063,4159,4192,4225,4257,4321,4385,4429,4474,4517,4584,4649,4715,4715]) },
+  premierCoPay: { name:"PRUExtra Premier CoPay", base:"premier", pass:ALL, renewal:true, reward:0.2, prem: L([1147,1143,1135,1116,1097,1063,1027,992,954,919,874,877,879,881,883,887,893,900,905,909,974,980,986,992,996,998,1000,1015,1028,1041,1090,1116,1131,1147,1159,1169,1184,1201,1217,1235,1605,1637,1795,1850,1857,1885,1900,1905,1913,1918,2440,2465,2521,2709,2783,3355,3398,3410,3746,3895,4760,4855,5206,5418,5440,6580,7046,7493,7550,7585,8280,8370,8703,9129,9508,9859,10165,10469,10772,11057,11343,11627,11706,11785,12148,12457,12760,13063,13284,13497,13581,13656,13729,13877,14023,14123,14223,14324,14476,14624]) },
+  preferredCoPay: { name:"PRUExtra Preferred CoPay", base:"premier", pass:ALL, renewal:true, reward:0.2, prem: L([664,660,657,650,635,614,593,573,551,531,506,508,510,511,512,513,515,517,520,522,565,565,568,569,570,571,577,585,593,603,636,646,655,664,671,681,690,699,709,717,945,958,1050,1081,1085,1089,1093,1096,1100,1104,1415,1424,1456,1566,1605,1944,1957,1963,2165,2247,2757,2806,3009,3132,3132,3820,4079,4337,4369,4400,4802,4837,5036,5282,5503,5731,5956,6175,6396,6604,6814,7019,7076,7135,7400,7665,7930,8125,8318,8383,8449,8514,8642,8769,8858,8947,9034,9167,9298,9429]) },
+  premierLiteCoPay: { name:"PRUExtra Premier Lite CoPay", base:"premier", pass:ALL, renewal:true, prem: L([464,462,459,454,447,432,418,403,388,374,356,357,358,359,360,361,363,364,366,368,382,385,390,395,400,402,406,412,418,425,438,451,458,465,473,480,486,492,499,505,625,670,710,730,758,765,770,772,775,778,948,997,1020,1095,1126,1305,1335,1382,1455,1515,1850,1885,2020,2105,2115,2555,2735,2910,2930,2945,3270,3386,3520,3692,3846,3988,4112,4235,4358,4472,4646,4761,4900,5000,5100,5226,5353,5479,5573,5662,5700,5730,5800,5891,5953,5995,6037,6081,6145,6207]) },
+  extraPremier: { name:"PRUExtra Premier", base:"premier", pass:ALL, renewal:true, reward:0.2, prem: L([1687,1677,1669,1644,1614,1564,1513,1459,1401,1354,1287,1295,1300,1302,1304,1308,1318,1330,1343,1360,1428,1441,1450,1459,1464,1469,1474,1492,1511,1538,1608,1647,1670,1693,1712,1736,1757,1780,1807,1831,2395,2445,2660,2704,2720,2736,2753,2768,2784,2809,3250,3620,3721,3992,4099,4945,5001,5021,5519,5728,7016,7134,7653,7973,7990,9590,10377,11034,11137,11150,11162,11219,11639,12110,12533,12967,13308,13633,13955,14273,14576,14878,15178,15261,15345,15728,16115,16498,16779,17061,17156,17251,17344,17531,17716,17843,17970,18098,18291,18479]) },
+  extraPremierLite: { name:"PRUExtra Premier Lite", base:"premier", pass:ALL, renewal:true, prem: L([947,947,947,941,919,873,842,815,783,754,718,721,722,724,726,728,734,740,742,747,806,814,818,824,827,829,830,840,851,862,899,923,935,948,958,958,970,984,996,1010,1306,1336,1459,1508,1514,1535,1550,1553,1560,1563,1978,2004,2049,2194,2261,2714,2757,2767,3032,3162,3853,3941,4211,4394,4412,5317,5708,6069,6114,6143,6610,6660,6845,7082,7292,7487,7657,7825,7993,8152,8310,8468,8512,8556,8757,8929,9097,9265,9388,9506,9552,9594,9635,9717,9798,9853,9909,9965,10049,10131]) },
+  plusCare: { name:"PRUExtra Plus Care", base:"plus", pass:ALL, prem: R([[1,5,167],[6,20,170],[21,40,174],[41,50,243],[51,55,355],[56,60,480],[61,65,665],[66,70,868],[71,73,1108],[74,75,1291],[76,78,1443],[79,80,1469],[81,83,1561],[84,85,1623],[86,88,1739],[89,90,1841],[91,93,1898],[94,95,1955],[96,98,2012],[99,101,2072]]) },
+  plusCoPay: { name:"PRUExtra Plus CoPay", base:"plus", pass:ALL, renewal:true, prem: R([[1,20,258],[21,30,264],[31,40,289],[41,50,360],[51,55,507],[56,60,693],[61,65,959],[66,70,1250],[71,73,1584],[74,75,1862],[76,78,2065],[79,80,2226],[81,83,2365],[84,85,2459],[86,88,2635],[89,90,2790],[91,93,2875],[94,95,2962],[96,98,3049],[99,101,3140]]) },
+  plusLiteCoPay: { name:"PRUExtra Plus Lite CoPay", base:"plus", pass:ALL, renewal:true, prem: R([[1,20,177],[21,30,183],[31,40,201],[41,50,252],[51,55,360],[56,60,481],[61,65,666],[66,70,869],[71,73,1117],[74,75,1292],[76,78,1474],[79,80,1626],[81,83,1784],[84,85,1884],[86,88,2075],[89,90,2137],[91,93,2202],[94,95,2268],[96,98,2335],[99,101,2404]]) },
+  extraPlus: { name:"PRUExtra Plus", base:"plus", pass:ALL, renewal:true, reward:0.1, prem: R([[1,20,355],[21,30,381],[31,40,437],[41,50,594],[51,55,852],[56,60,1140],[61,65,1579],[66,70,2025],[71,73,2353],[74,75,2714],[76,78,3023],[79,80,3265],[81,83,3468],[84,88,3606],[89,90,3891],[91,93,3988],[94,95,4084],[96,98,4181],[99,101,4283]]) },
+  extraPlusLite: { name:"PRUExtra Plus Lite", base:"plus", pass:["sc","pr"], renewal:true, prem: R([[1,20,233],[21,30,239],[31,40,261],[41,50,326],[51,55,468],[56,60,625],[61,65,866],[66,70,1130],[71,73,1454],[74,75,1683],[76,78,1924],[79,80,2118],[81,83,2313],[84,85,2451],[86,88,2581],[89,90,2781],[91,93,2850],[94,95,2913],[96,98,2981],[99,101,3050]]) }
+};
+
+const PASS_HINT = {
+  sc: "MediShield Life is paid fully by MediSave; the private top-up can use MediSave up to the Additional Withdrawal Limit.",
+  pr: "MediShield Life is paid fully by MediSave; the private top-up can use MediSave up to the Additional Withdrawal Limit.",
+  t1: "Foreigners pay the full PRUShield premium in cash.",
+  t2: "The payer may use MediSave up to the withdrawal limit only if the insured is their spouse, child or parent."
+};
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+const fmt = v => "S$" + v.toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const r2 = v => Math.round(v * 100) / 100;
+
+(function initAge(){
+  const s = $("age");
+  for (let i = 1; i <= 101; i++) {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = i === 101 ? "Above 100" : String(i);
+    s.appendChild(o);
+  }
+  s.value = 35;
+})();
+
+function fillPlans(){
+  const pass = $("pass").value, cur = $("plan").value, s = $("plan");
+  s.innerHTML = "";
+  Object.entries(PLANS).forEach(([k,p]) => {
+    if (!p.pass.includes(pass)) return;
+    const o = document.createElement("option");
+    o.value = k; o.textContent = p.name + (p.renewal ? " (renewal only)" : "");
+    s.appendChild(o);
+  });
+  if ([...s.options].some(o => o.value === cur)) s.value = cur;
+}
+
+function fillRiders(){
+  const pass = $("pass").value, plan = $("plan").value, cur = $("rider").value, s = $("rider");
+  s.innerHTML = '<option value="">No rider</option>';
+  const current = [], withdrawn = [];
+  Object.entries(RIDERS).forEach(([k,r]) => {
+    if (r.base !== plan || !r.pass.includes(pass)) return;
+    (r.renewal ? withdrawn : current).push([k,r]);
+  });
+  const add = (list, label) => {
+    if (!list.length) return;
+    const g = document.createElement("optgroup"); g.label = label;
+    list.forEach(([k,r]) => { const o = document.createElement("option"); o.value = k; o.textContent = r.name; g.appendChild(o); });
+    s.appendChild(g);
+  };
+  add(current, "Available for new applications");
+  add(withdrawn, "Withdrawn – renewal only");
+  s.disabled = s.options.length === 1;
+  if ([...s.options].some(o => o.value === cur)) s.value = cur;
+}
+
+function calc(){
+  const pass = $("pass").value, age = +$("age").value, planKey = $("plan").value, riderKey = $("rider").value;
+  const plan = PLANS[planKey], rider = RIDERS[riderKey];
+  const local = pass === "sc" || pass === "pr";
+  const msl = MSL[age], aip = plan.aip[age], awl = AWL[age];
+  const rows = [], notes = [];
+  let medisave = 0, cash = 0;
+
+  if (local) {
+    const aipMs = Math.min(aip, awl), aipCash = r2(aip - aipMs);
+    rows.push(["MediShield Life", "Paid by MediSave", msl]);
+    rows.push([plan.name + " additional private cover", `MediSave up to ${fmt(awl)} (AWL)` + (aipCash > 0 ? `, cash ${fmt(aipCash)}` : ""), aip]);
+    medisave += msl + aipMs; cash += aipCash;
+  } else {
+    const full = r2(msl + aip);
+    rows.push([plan.name + " (full premium)", pass === "t1" ? "Cash only" : `MediSave limit ${fmt(msl + awl)}`, full]);
+    if (pass === "t2") { const ms = Math.min(full, msl + awl); medisave += ms; cash += r2(full - ms); }
+    else cash += full;
+  }
+
+  const rewardOn = rider && rider.reward && $("reward").checked;
+  if (rider) {
+    const std = rider.prem[age];
+    const val = rewardOn ? r2(std * (1 - rider.reward)) : std;
+    rows.push([rider.name + " rider", rewardOn ? `Cash · standard ${fmt(std)} less ${rider.reward*100}% PRUWell Reward` : "Cash only", val]);
+    cash += val;
+  }
+
+  medisave = r2(medisave); cash = r2(cash);
+  const total = r2(medisave + cash);
+
+  // PRUWell toggle
+  $("rewardWrap").hidden = !(rider && rider.reward);
+  if (rider && rider.reward) $("rewardLabel").textContent = `Apply ${rider.reward*100}% PRUWell Reward on rider (no claims, standard terms)`;
+
+  // notes
+  if (age > 75) notes.push(["warn", "Maximum entry age is 75 (age next birthday). Premiums above 75 apply to renewals only."]);
+  if (plan.renewal) notes.push(["warn", plan.name + " is withdrawn from new business; shown for renewals only."]);
+  if (rider && rider.renewal) notes.push(["warn", rider.name + " is withdrawn from new business and mid-term add; renewal only."]);
+  if (pass === "t2") notes.push(["info", PASS_HINT.t2]);
+  if (!Object.values(RIDERS).some(r => r.base === planKey)) notes.push(["info", "No PRUExtra rider attaches to this base plan."]);
+  $("notes").innerHTML = notes.map(([t,m]) => `<div class="note ${t === "info" ? "info" : ""}">${m}</div>`).join("");
+  $("passHint").textContent = local ? PASS_HINT.sc : (pass === "t1" ? PASS_HINT.t1 : "Full premium is shown; MediSave from an SC/PR payer can cover part of it.");
+
+  // summary
+  $("rows").innerHTML = rows.map(([n,s,v]) => `<tr><td>${n}<span class="sm">${s}</span></td><td class="n">${fmt(v)}</td></tr>`).join("")
+    + `<tr class="sum"><td>Total per year</td><td class="n">${fmt(total)}</td></tr>`;
+  $("total").textContent = fmt(total);
+  $("monthly").textContent = `Age next birthday ${age === 101 ? "above 100" : age} · ${$("pass").selectedOptions[0].textContent}`;
+  $("msAmt").textContent = fmt(medisave);
+  $("caAmt").textContent = fmt(cash);
+  const pct = total ? medisave / total * 100 : 0;
+  $("barMs").style.width = pct + "%";
+  $("barCa").style.width = (100 - pct) + "%";
+}
+
+function onPass(){ fillPlans(); fillRiders(); calc(); }
+function onPlan(){ fillRiders(); calc(); }
+$("pass").addEventListener("change", onPass);
+$("plan").addEventListener("change", onPlan);
+$("age").addEventListener("change", calc);
+$("rider").addEventListener("change", calc);
+$("reward").addEventListener("change", calc);
+
+// start in a realistic state: SC, age 35, Premier + Premier Care
+fillPlans(); $("plan").value = "premier"; fillRiders(); $("rider").value = "premierCare"; calc();
+</script>
+</body>
+</html>
